@@ -46,6 +46,7 @@ vol <- doc |>
 
 ## Когда все получится, оберните свое решение в функцию read_letter().
 
+
 read_letter <- function(xml_path) {
   
   date_node <- xml_find_first(doc, "//correspAction[@type='sending']/date")
@@ -54,11 +55,25 @@ read_letter <- function(xml_path) {
                  xml_attr(date_node, "when") |>
                    trimws())
   
-  corresp_node <- xml_find_first(doc, "//correspAction[@type='receiving']")
-  corresp <- ifelse(length(corresp_node) == 0, 
-                    NA_character_, 
-                    xml_text(corresp_node)|>    
-                      trimws())
+  corresp_node <- xml_find_first(doc, ".//correspAction[@type='receiving']")
+  if (length(corresp_node) == 0) {
+    corresp_node <- xml_find_first(doc, ".//correspAction[contains(@type, 'receiving')]")
+  }
+  
+  corresp <- NA_character_
+  if (length(corresp_node) > 0) {
+    # Пробуем разные способы извлечения текста адресата
+    corresp_text <- xml_text(corresp_node) %>% trimws()
+    if (corresp_text != "") {
+      corresp <- corresp_text
+    } else {
+      # Если текста нет напрямую, ищем в дочерних элементах
+      pers_name <- xml_find_first(corresp_node, ".//persName")
+      if (length(pers_name) > 0) {
+        corresp <- xml_text(pers_name) %>% trimws()
+      }
+    }
+  }
   
   vol_node <- xml_find_first(doc, "//biblScope[@unit='vol']")
   vol <- ifelse(length(vol_node) == 0, 
@@ -81,4 +96,5 @@ read_letter <- function(xml_path) {
 # Прочтите все письма в один тиббл при помощи map_dfr(). 
 letters_tbl <- map_dfr(my_xmls, read_letter)
 letters_tbl
+
 
