@@ -10,6 +10,7 @@
 
 # Применяйте trimws() к результату парсинга, чтобы избавиться от лишних строк. 
 
+
 library(xml2)
 library(dplyr)
 library(purrr)
@@ -20,30 +21,57 @@ my_xmls <- list.files("letters/", full.names = TRUE)
 # Сначала напишите код для первого письма в датасете, чтобы потренироваться. 
 
 test_xml <- my_xmls[1]
-doc <- # ваш код здесь
-ns <- # ваш код здесь
+doc <- read_xml(test_xml)
+ns <- xml_ns(doc)
 
   
 # дата письма
-date <- # ваш код здесь
-
+date <- doc |>
+  xml_find_first("//correspAction[@type='sending']/date") |>
+  xml_attr("when") |>
+  trimws()
 
 # адресат письма
-corresp <- # ваш код здесь
+corresp <- doc |>
+  xml_find_first("//correspAction[@type='receiving']") |>
+  xml_text() |>
+  trimws()
 
 # том 
-vol <- # ваш код здесь
+vol <- doc |>
+  xml_find_first("//biblScope[@unit='vol']") |>
+  xml_text() |>
+  trimws()
 
 
 ## Когда все получится, оберните свое решение в функцию read_letter().
 
 read_letter <- function(xml_path) {
   
-  # ваш код здесь 
+  date_node <- xml_find_first(doc, "//correspAction[@type='sending']/date")
+  date <- ifelse(length(date_node) == 0, 
+                 NA_character_, 
+                 xml_attr(date_node, "when") |>
+                   trimws())
+  
+  corresp_node <- xml_find_first(doc, "//correspAction[@type='receiving']")
+  corresp <- ifelse(length(corresp_node) == 0, 
+                    NA_character_, 
+                    xml_text(corresp_node)|>    
+                      trimws())
+  
+  vol_node <- xml_find_first(doc, "//biblScope[@unit='vol']")
+  vol <- ifelse(length(vol_node) == 0, 
+                NA_character_, 
+                xml_text(vol_node) |>
+                  trimws())
 
+  
   # записываем в тиббл
   res <- tibble(
-    # ваш код здесь
+    vol = vol,
+    date = date,
+    corresp = corresp
    )
 
   return(res)
@@ -51,5 +79,6 @@ read_letter <- function(xml_path) {
 
 
 # Прочтите все письма в один тиббл при помощи map_dfr(). 
-letters_tbl <- # ваш код здесь
+letters_tbl <- map_dfr(my_xmls, read_letter)
+letters_tbl
 
